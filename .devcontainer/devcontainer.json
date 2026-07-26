@@ -21,11 +21,17 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"tamasfe.even-better-toml"
+				"tamasfe.even-better-toml",
+				"ms-toolsai.jupyter",
+				"ms-toolsai.datawrangler"
 			]
 		}
-	}
+	},
 
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"
+
+	"remoteEnv": {
+		"UV_LINK_MODE": "copy"
+	}
 }
