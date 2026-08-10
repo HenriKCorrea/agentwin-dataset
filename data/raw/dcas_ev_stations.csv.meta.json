@@ -1,0 +1,14 @@
+{
+  "fetched_date": "2026-07-27",
+  "source_url": "https://data.cityofnewyork.us/resource/fc53-9hrv",
+  "source_params": {
+    "$limit": 10000
+  },
+  "row_count": 1685,
+  "attachments": [
+    {
+      "url": "https://data.cityofnewyork.us/api/views/fc53-9hrv/files/635c379a-691f-4986-8f5c-300b15cec89d?download=true&filename=NYC%20EV%20Fleet%20Station%20Network_Data%20Dictionary.xlsx",
+      "file": "data/attachments/NYC_EV_Fleet_Station_Network_Data_Dictionary.xlsx"
+    }
+  ]
+}

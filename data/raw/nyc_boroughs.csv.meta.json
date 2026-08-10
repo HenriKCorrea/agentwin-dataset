@@ -1,0 +1,16 @@
+{
+  "fetched_date": "2026-07-27",
+  "source_url": "https://data.cityofnewyork.us/resource/gthc-hcne",
+  "source_params": null,
+  "row_count": 5,
+  "attachments": [
+    {
+      "url": "https://data.cityofnewyork.us/api/views/gthc-hcne/files/4ef9855a-f485-4c02-b246-530b6b736059?download=true&filename=data_dictionary.xlsx",
+      "file": "data/attachments/nyc_boroughs_data_dictionary.xlsx"
+    },
+    {
+      "url": "https://data.cityofnewyork.us/api/views/gthc-hcne/files/f0af73fe-df03-43fe-91b3-0c0553c83008?download=true&filename=nybb_metadata.pdf",
+      "file": "data/attachments/nyc_boroughs_metadata.pdf"
+    }
+  ]
+}
