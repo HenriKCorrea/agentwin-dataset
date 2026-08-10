@@ -1,0 +1,8 @@
+{
+  "fetched_date": "2026-08-02",
+  "source_url": "https://data.cityofnewyork.us/resource/fc53-9hrv",
+  "source_params": {
+    "$limit": 10000
+  },
+  "row_count": 1685
+}
