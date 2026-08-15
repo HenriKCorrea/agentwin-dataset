@@ -1,0 +1,10 @@
+station_name,agency,street,borough,postcode,latitude,longitude,no_of_ports,charger_types,public_charger_,fee_for_city_drivers,geometry
+"DOB - 120-55 Queens Blvd, Queens",DOB,120-55 Queens Blvd,Queens,11424,40.713329,-73.828601,1,['EV Solar Arc Charger'],No,No,POINT (-73.828601 40.713329)
+"DOT - 6626 Metropolitan Ave, Queens",DOT,6626 Metropolitan Ave,Queens,11379,40.712377,-73.892143,10,"['Level 2 Charger', 'Level 3 Fast Charger']",No,No,POINT (-73.892143 40.712377)
+"DOT - 30-30 Thomson Avenue, Queens",DOT,30-30 Thomson Avenue,Queens,11101,40.745042,-73.936191,2,['Level 3 Fast Charger'],No,No,POINT (-73.936191 40.745042)
+"DSNY - 299 South St, Manhattan",DSNY,299 South St,Manhattan,10002,40.710508,-73.986196,4,['Level 3 Fast Charger'],No,No,POINT (-73.986196 40.710508)
+"FDNY - Randalls Island Fire Academy, Manhattan",FDNY,Randalls Island Fire Academy,Manhattan,10035,40.795535,-73.922671,2,['Level 2 Charger'],No,No,POINT (-73.922671 40.795535)
+"NYPD - 2900 Flatbush Ave, Brooklyn",NYPD,2900 Flatbush Ave,Brooklyn,11234,40.600248,-73.912051,4,['Level 2 Charger'],No,No,POINT (-73.912051 40.600248)
+"DSNY - 2501 Knapp St, Brooklyn",DSNY,2501 Knapp St,Brooklyn,11235,40.592214,-73.932546,3,"['Level 2 Charger', 'Level 3 Fast Charger']",No,No,POINT (-73.932546 40.592214)
+"DOT - 2900 Flatbush Avenue, Brooklyn",DOT,2900 Flatbush Avenue,Brooklyn,11234,40.600248,-73.912051,2,['Level 3 Fast Charger'],No,No,POINT (-73.912051 40.600248)
+"NYPD - 301 Gold Street, Brooklyn",NYPD,301 Gold Street,Brooklyn,11201,40.695447,-73.983228,1,['Level 3 Fast Charger'],No,No,POINT (-73.983228 40.695447)

@@ -1,0 +1,428 @@
+\chapter{Evaluation}
+\label{chap:evaluation}
+
+This chapter defines the cross-domain use case used to demonstrate AgenTwin,
+    followed by the evaluation methodology that assesses the artifact's
+    semantic, functional, and performance characteristics.
+The use case provides the concrete operational scenario against which all evaluation
+    dimensions are measured, grounding the assessment in a realistic deployment context.
+
+\section{Cross-Domain Use Case Definition}
+\label{sec:use-case}
+
+To validate AgenTwin's agent-mediated interoperability approach,
+    a realistic cross-domain scenario has been designed that requires
+    cooperation between Smart City and Energy Grid DT systems.
+
+The use case addresses the operational challenge of coordinating overnight EV fleet charging
+    across facilities managed by two organizationally separate institutions:
+    the New York City Department of Citywide Administrative Services (DCAS),
+    which operates the city's fleet EV charging network across municipal garages in all five boroughs,
+    and Consolidated Edison (ConEdison),
+    the distribution utility responsible for the electrical grid serving those facilities.
+Depot charging is a centralized EV charging model in which fleet vehicles return to
+    a common operating facility for scheduled energy replenishment during non-operational hours,
+    enabling predictable vehicle availability and simplified infrastructure
+    management.
+The challenge intensifies for mixed fleets because power requirements vary substantially
+    by vehicle category: light-duty vehicles typically charge at 7--22~kW,
+    while heavy-duty vehicles may require over 120~kW,
+    making uniform infrastructure planning insufficient.
+Moreover, when the combined electrical demand of a fleet approaches a facility's
+    service capacity, grid upgrades may be required to prevent overloading
+    the distribution infrastructure~\cite{monta2026}.
+In an operational context, this means that a safe overnight charging assignment
+    cannot be derived from charging station data alone:
+    it requires real-time knowledge of transformer headroom held exclusively
+    by the serving utility.
+
+\textbf{User Persona:}
+A Fleet Coordinator at DCAS is responsible for ensuring that vehicles across several
+    city departments are road-ready at morning dispatch.
+Each night, as vehicles return to their respective agency facilities across the five boroughs,
+    the coordinator must confirm that the combined overnight charging load can be accommodated
+    by the local distribution grid at each facility without exceeding transformer capacity.
+DCAS operates charging infrastructure for a heterogeneous fleet spanning five agency categories,
+    each corresponding to a distinct \texttt{allowedVehicleType} in the NYC Fleet Station Network:
+    NYPD patrol and detective sedans (\texttt{car}:
+        Chevrolet Bolt EV at 7.2~kW, Hyundai Ioniq~5 at 10.9~kW);
+    FDNY Emergency Medical Services paramedic response units (\texttt{car}:
+        Hyundai Ioniq~5);
+    DSNY refuse collection trucks (\texttt{truck}:
+        Mack~LR Electric at up to 150~kW DC);
+    DOE electric school buses (\texttt{bus}:
+        Thomas Built Buses Jouley at up to 60~kW DC);
+    and a NYCEM mobile command vehicle (\texttt{caravan}:
+        Mercedes-Benz eSprinter EV at 22~kW)~\cite{dcas2026cftp}.
+Power requirements span more than an order of magnitude across these categories,
+    making uniform infrastructure planning insufficient.
+The coordinator opens AgenTwin and submits a natural-language request:
+    \textit{``I need to schedule tonight's depot charge.
+    Incoming vehicles: 8 Chevrolet Bolt EVs (NYPD), 4 Hyundai Ioniq~5s (FDNY EMS),
+    2 Thomas Built Jouley school buses (DOE), 1 eSprinter mobile command unit (NYCEM),
+    and 2 Mack~LR Electric collection trucks (DSNY).
+    Which stations can charge all of them without exceeding grid limits?''}
+
+\textbf{Cross-Domain Requirement:}
+This request crosses an organizational data sovereignty boundary:
+    DCAS and ConEdison are independent institutions operating separate Digital Twin systems
+    over the same physical infrastructure,
+    with no shared data model:
+
+\begin{itemize}
+    \item The \textbf{Smart City DT} (DCAS) knows charging station locations,
+        plug counts, operational status, and current slot availability,
+        but has no access to ConEdison's transformer loads or grid capacity data
+    \item The \textbf{Energy Grid DT} (ConEdison) monitors distribution transformer loads
+        and computes available headroom per substation zone,
+        but does not model DCAS charging station infrastructure or fleet vehicle assignments
+\end{itemize}
+
+AgenTwin bridges these two platforms:
+    it correlates charging station locations with ConEdison substation service zones,
+    computes available capacity per transformer zone,
+    and produces a fleet-wide charging assignment that satisfies both
+    station availability and the grid's maximum import constraint.
+
+\textbf{Interaction Workflow:}
+\begin{enumerate}
+    \item \textbf{Operator submits request} via natural language through user interface,
+        identifying vehicle models and fleet size.
+    \item \textbf{Vehicle enrichment:} the Energy Grid agent resolves each vehicle model against
+        \texttt{ElectricVehicle} entities in Ditto,
+        retrieving \texttt{chargeRateMax} per vehicle model without requiring
+        the operator to provide electrical specifications.
+    \item \textbf{Infrastructure query:} the Smart City agent queries \texttt{EVChargingStation}
+        entities in KTWIN, filtering by
+        \texttt{availableCapacity > 0} and
+        \texttt{status = working}.
+    \item \textbf{Grid capacity query:} the Energy Grid agent aggregates
+        \texttt{CustomerLoad.p} and \texttt{EquivalentLoad.p} values
+        per ConEdison substation zone in Ditto,
+        computing available headroom as
+        $\texttt{headroom} = \texttt{ratedS} - \Sigma(\texttt{CustomerLoad.p} + \texttt{EquivalentLoad.p})$.
+    \item \textbf{Geographic--topological bridge:} the agents correlate each candidate station's
+        GeoJSON coordinates (\texttt{GeoLocation}) with the CIM \texttt{Location} position points
+        of ConEdison substation zones to determine which substation serves each station.
+        This step constitutes the primary semantic gap: the two platforms
+        represent geographic position in structurally incompatible formats with no shared identifier.
+    \item \textbf{Assignment computation:} each vehicle is mapped to a station whose substation zone
+        can absorb its \texttt{chargeRateMax} while maintaining at least 5\% safety headroom.
+        Vehicles with higher power requirements are preferentially assigned to zones
+        with greater available capacity.
+    \item \textbf{Assignment proposal presented} to the operator as a structured natural-language
+        response listing each vehicle and its assigned charging station.
+\end{enumerate}
+
+\textbf{Evaluation Scenario:}
+Both DT platforms are pre-populated with a known city state drawn from real-world sources:
+    ConEdison substation locations sourced from OpenStreetMap,
+    and DCAS fleet charging station locations from the NYC Open Data portal,
+    with transformer electrical parameters synthesized from representative overnight baseline loads.
+AgenTwin is designed with no manually coded mapping between the two platforms:
+    all semantic bridging is performed by the domain agents at runtime
+    through MCP queries and A2A negotiation.
+    The evaluation verifies that this architectural property produces
+    a complete, constraint-satisfying assignment.
+
+\textbf{Success Criteria:}
+\begin{itemize}
+    \item All vehicles in the request receive a valid charging station assignment
+    \item No ConEdison transformer zone exceeds 95\% of rated capacity after the full assignment
+    \item Only stations with \texttt{status = working} and \texttt{availableCapacity > 0} are assigned
+\end{itemize}
+
+\subsection{Semantic Gap Characterization}
+\label{subsec:semantic-gaps}
+
+The scenario exposes three distinct semantic gaps between the
+    \texttt{smart-city} ontology (KTWIN) and the
+    \texttt{energy-grid} ontology (Ditto).
+These gaps span three categories of semantic heterogeneity:
+    \emph{conceptual} (same physical object modeled from incompatible domain perspectives),
+    \emph{structural} (same geographic concept encoded in incompatible data formats), and
+    \emph{vocabulary} (a concept present in neither ontology that the agent must resolve
+    from parametric world knowledge).
+Figure~\ref{fig:patched-semantic-gap} illustrates the cross-domain ontology model
+    after the \texttt{PowerSystemResource.Location} patch described in
+    Section~\ref{sec:ontology-preparation},
+    annotating each entity by its role in the coordination decision,
+    and Table~\ref{tab:semantic-gaps} summarizes the three identified gaps.
+Entities marked \texttt{<<key>>} are directly read or compared during the assignment decision;
+    \texttt{<<bridge>>} entities mark cross-domain semantic gaps the agent must negotiate at runtime;
+    \texttt{<<context>>} entities provide structural topology for graph traversal;
+    \texttt{<<open-reference>>} marks a concept referenced by one ontology but defined in the other.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,keepaspectratio]{figures/patched-semantic-gap.pdf}
+    \caption{Cross-domain ontology model for the AgenTwin EV fleet charging use case.}
+    \label{fig:patched-semantic-gap}
+\end{figure}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{ | m{4cm} | m{4cm} | m{5cm} | }
+        \hline
+
+        \textbf{Smart City Concept} & \textbf{Energy Grid Concept} & \textbf{Semantic Challenge} \\
+        \hline
+
+            \texttt{EVChargingStation}
+
+            (physical infrastructure asset)
+            
+            &
+            
+            \texttt{CustomerLoad}
+
+            (grid load entity)
+            
+            &
+            
+            Conceptual gap. Same physical installation, no shared identifier;
+            agent must correlate by geographic proximity. \\
+        \hline
+            
+            \texttt{GeoLocation}
+            
+            (GeoJSON,
+            WGS84 implicit per RFC~7946)
+            
+            &
+            
+            \texttt{Location},
+            
+            \texttt{PositionPoints},
+            
+            \texttt{CoordinateSystem}
+
+            (CRS declared as OGC URN)
+            
+            &
+
+            Structural gap. Different coordinate reference systems with different structural encodings.\\
+        \hline
+
+            \texttt{allowedVehicleType}
+
+            for \texttt{EVChargingStation}
+
+            (\texttt{car}, \texttt{bus}, \texttt{truck}$\ldots$)
+
+            &
+
+            \emph{(not modelled)}
+
+            &
+
+            \multirow{2}{=}{Vocabulary gap. 
+            Neither ontology models the vehicle type or model;
+            agent infers both from training knowledge.} \\
+        \cline{1-2}
+
+            \emph{(not modelled)}
+
+            &
+
+            \texttt{ElectricVehicle}
+
+            for headroom calculation (\texttt{chargeRateMax})
+
+            & \\
+        \hline
+
+    \end{tabular}
+    \caption{Semantic gaps requiring agent-mediated mapping}
+    \label{tab:semantic-gaps}
+\end{table}
+
+\section{Evaluation Methodology}
+\label{sec:evaluation-methodology}
+
+The evaluation assesses whether AgenTwin achieves its design goal:
+    enabling agent-mediated semantic interoperability between heterogeneous Digital Twin systems
+    without requiring manually coded integration between platforms.
+Following the DSR evaluation principle of demonstrating artifact feasibility,
+    the scope is deliberately bounded to the fleet charging coordination use case.
+
+The evaluation is structured as three layered dimensions that build on one another.
+Semantic mapping evaluation establishes, at the component level, that agents correctly
+    bridge each identified semantic gap before any end-to-end claim is made.
+Functional evaluation then verifies, end-to-end, that the artifact produces correct
+    outputs across nominal and boundary operating conditions.
+Performance evaluation characterises the operational cost of the integration mechanism,
+    informing whether the approach is practical for deployment.
+
+Following the DSR generalizability argument, the selected scenario is canonical:
+    it exercises all three categories of semantic heterogeneity identified as
+    constitutive of the problem class (conceptual, structural, vocabulary).
+Any additional scenario would add instances of already-demonstrated categories
+    rather than exposing new gap types.
+
+\subsection{Semantic Mapping Evaluation}
+\label{subsec:semantic-mapping-evaluation}
+
+Semantic mapping evaluation assesses whether agents correctly bridge each semantic gap
+    identified in Table~\ref{tab:semantic-gaps}.
+Correctness is verified through programmatic assertions on A2A task completion artifacts
+    produced at the end of each test scenario.
+The artifact provides three neutral output fields: \texttt{vehicle\_id},
+    \texttt{station\_id}, and \texttt{zone\_id} that encode the result
+    without prescribing how it was produced.
+Each field serves as an independent evaluation oracle for its corresponding gap:
+
+\begin{itemize}
+    \item \textbf{Conceptual Gap}
+        (\texttt{EVChargingStation} $\leftrightarrow$ \texttt{CustomerLoad}):
+    For each assignment in the artifact, the test harness independently verifies
+        that the assigned \texttt{station\_id}'s WGS84 coordinates
+        fall within the geographic boundary of the reported \texttt{zone\_id}.
+    A zone attribution error---possible only if the agent failed to correlate
+        charging station locations with substation service areas---produces
+        a station-zone mismatch that fails this assertion.
+
+    \item \textbf{Structural Gap}
+        (\texttt{GeoLocation} $\leftrightarrow$ \texttt{Location}/\texttt{CoordinateSystem}):
+    The test harness independently applies the CRS transformation from the
+        \texttt{crsUrn} declared in the Energy Grid DT
+        to the substation's \texttt{PositionPoints},
+        and verifies that the resulting WGS84 boundary is consistent with
+        the \texttt{zone\_id} reported in the artifact.
+    A CRS resolution error produces a geographic misclassification
+        detectable by comparing the independently-transformed coordinates
+        against zone boundaries.
+
+    \item \textbf{Vocabulary Gap}
+        (\texttt{allowedVehicleType} and \texttt{evName}):
+    The test harness maintains a ground-truth vehicle model-to-type table
+        as test infrastructure.
+    For each assignment, it verifies that the \texttt{station\_id}'s
+        \texttt{allowedVehicleType} includes the ground-truth type
+        for the assigned \texttt{vehicle\_id}'s model name.
+    A type inference error produces a vehicle-station type incompatibility
+        that fails this assertion.
+\end{itemize}
+
+\subsection{Functional Evaluation}
+\label{subsec:functional-evaluation}
+
+Functional evaluation verifies that the artifact produces correct outputs
+    across several test scenarios, each targeting a distinct constraint dimension.
+Each scenario is submitted as an A2A task to AgenTwin and evaluated once
+    in a controlled, reproducible environment.
+Significant failures in multi-agent pipelines arise from structural coupling between
+    agents, tools, and shared context rather than from isolated stochastic draws~\cite{wegener2026};
+    such failures are therefore consistent across executions and detectable in a single run.
+Consistent with the DSR evaluation goal of demonstrating feasibility,
+    a scenario passes if the observed artifact fields match the expected values;
+    a single counterexample is sufficient to refute a capability claim.
+
+Following the behavioral testing principle of black-box evaluation~\cite{ribeiro2020},
+    success criteria are defined over observable output fields
+    rather than internal agent reasoning traces.
+Inspecting reasoning traces introduces a white-box paradox:
+    an agent could emit a correct answer through a spurious reasoning,
+    or produce a correct reasoning chain yet fail to complete the task.
+The scenarios are therefore designed as \emph{Minimum Functionality Tests} (MFTs):
+    each targets one specific capability of the system,
+    and is constructed so that a plausible wrong-mechanism strategy---the natural shortcut
+    an agent would take if it had not correctly bridged the gap---produces
+    a \emph{systematically different} observable output value.
+AgenTwin is an agentic multi-system pipeline rather than a single NLP model,
+    so the capability taxonomy from~\cite{ribeiro2020} does not transfer directly;
+    the black-box MFT principle is applied at the level of cross-domain semantic gap resolution.
+
+\begin{itemize}
+    \item \textbf{Nominal Scenario:}
+    Execute the cross-domain use case described in Section~\ref{sec:use-case}
+        with transformer headroom sufficient for the full vehicle fleet.
+    Verifies all three semantic gap assertions:
+        every \texttt{station\_id} must be geographically consistent with its \texttt{zone\_id},
+        CRS transformation must yield the correct zone attribution,
+        and each vehicle-station pair must satisfy \texttt{allowedVehicleType} compatibility.
+    Success requires all 17 vehicles assigned,
+        \texttt{unresolvable\_vehicles} empty, and \texttt{oversubscription} null.
+
+    \item \textbf{Oversubscription Scenario:}
+    Reduce available transformer headroom in the platform data so that it
+        cannot accommodate the full fleet,
+        keeping the operator request unchanged.
+    Verifies that the system identifies the capacity constraint through platform queries,
+        assigns vehicles in zones with sufficient headroom,
+        and moves vehicles in the oversubscribed zone to
+        \texttt{unresolvable\_vehicles} with reason: \texttt{no\_capacity}.
+    Success requires \texttt{oversubscription} non-null with the correct zone
+        and shortfall values, and no vehicle assigned to a zone exceeding
+        95\% of rated capacity.
+
+    \item \textbf{Unknown Vehicle Scenario:}
+    Extend the nominal fleet with one vehicle whose model name is absent
+        from both ontologies and the agent's training knowledge
+        (\textit{ElectraMax X7}),
+        with transformer headroom unchanged from the nominal scenario.
+    Verifies the vocabulary gap negative case:
+        the agent must not silently assign an unknown vehicle type to a station.
+    Success requires the unknown vehicle to appear in \texttt{unresolvable\_vehicles}
+        with reason: \texttt{type\_inference\_failed}
+        and to be absent from \texttt{assignments}.
+
+    \item \textbf{Type-Incompatible Station Scenario:}
+    Configure the platform data so that all charging stations across the deployment
+        exclusively accept \texttt{allowedVehicleType: car},
+        then include one vehicle in the fleet whose model name resolves to
+        \texttt{truck} via the ground-truth type table.
+    Verifies that the agent enforces type compatibility for known vehicle types:
+        the agent must not silently assign the truck to a car-only station.
+    Success requires the truck vehicle to appear in \texttt{unresolvable\_vehicles}
+        with reason: \texttt{no\_compatible\_station}
+        and to be absent from \texttt{assignments}.
+
+    \item \textbf{Topological Attribution Scenario:}
+    Configure the test data with one charging station $C_1$
+        whose WGS84 coordinates place it geographically closer to substation $S_1$
+        than to substation $S_2$,
+        but whose corresponding \texttt{CustomerLoad} in the Energy Grid DT is
+        connected to $S_2$ via the CIM graph path
+        \texttt{CustomerLoad} $\to$ \texttt{Terminal} $\to$
+        \texttt{ConnectivityNode} $\to$ \texttt{Terminal} $\to$
+        \texttt{PowerTransformerEnd} $\to$ \texttt{Substation}.
+    Because power physically flows through $S_2$'s transformer,
+        capacity headroom must be debited from $S_2$, not $S_1$.
+    Verifies that the agent traverses the ontology graph to determine zone attribution
+        rather than using geographic proximity as a surrogate.
+    The test harness maintains a topological ground-truth table
+        derived by following the CIM graph path for each station.
+    Success requires the \texttt{zone\_id} reported for the $C_1$'s assignment
+        to match the CIM-derived zone ($S_2$'s service area),
+        not the geographically nearest zone ($S_1$'s service area);
+        a proximity-based attribution produces \texttt{zone\_id} $= S_1$,
+        which fails this assertion.
+\end{itemize}
+
+\subsection{Performance Evaluation}
+\label{subsec:performance-evaluation}
+
+Performance evaluation characterizes the operational overhead incurred by
+    the agent-mediated integration mechanism.
+Because AgenTwin is a novel approach with no prior implementation to compare against,
+    no external baseline and no numeric acceptance threshold can be derived from
+    existing literature or practice at this stage of the research.
+The goal is to produce empirical data that supports a qualitative feasibility judgement
+    and establishes a reference point for subsequent projects.
+The results are reported in Section~\ref{sec:performance-results}
+    and interpreted in the Discussion (Section~\ref{sec:discussion}).
+
+\begin{itemize}
+    \item \textbf{Task Completion Time:} % Suggestion: use LangFuse
+    Measure total time from operator submission to delivery of the complete assignment proposal,
+        including any clarification turns between the agent and the operator.
+    Report mean, median, and 95th percentile times across multiple executions.
+
+    \item \textbf{LLM Resource Consumption:} % Suggestion: use LangFuse
+    Record the number of LLM inference calls and total tokens consumed
+        per assignment request.
+    These metrics constitute the dominant cost driver in agent-mediated systems
+        and determine infrastructure requirements for realistic deployment.
+\end{itemize}
