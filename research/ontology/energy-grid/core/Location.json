@@ -1,0 +1,31 @@
+{
+    "@id": "dtmi:agentwin:ngsi_ld:cim:energy:Location;1",
+    "@type": "Interface",
+    "displayName": "Location",
+    "description": "Location is used to deifne the absolute position of an assets",
+    "comment": "Adapted from CIM and https://github.com/smart-data-models/dataModel.EnergyCIM/ data models",
+    "contents": [
+        {
+            "@type": "Property",
+            "name": "locationName",
+            "description": "location Name",
+            "writable": true,
+            "schema": "string"
+        },
+        {
+            "@type": "Relationship",
+            "name": "CoordinateSystem",
+            "target": "dtmi:agentwin:ngsi_ld:cim:energy:CoordinateSystem;1",
+            "description": "Coordinate system used to describe position points of this location.",
+            "displayName": "CoordinateSystem"
+        },
+        {
+            "@type": "Relationship",
+            "name": "PositionPoints",
+            "target": "dtmi:agentwin:ngsi_ld:cim:energy:PositionPoint;1",
+            "description": "Sequence of position points describing this location.",
+            "displayName": "PositionPoints"
+        }
+    ],
+    "@context": "dtmi:dtdl:context;2"
+}
