@@ -11,6 +11,7 @@ dependencies = [
     "matplotlib>=3.11.2",
     "osmnx>=2.1.1",
     "requests>=2.34.2",
+    "tqdm>=4.70.1",
 ]
 
 [dependency-groups]
